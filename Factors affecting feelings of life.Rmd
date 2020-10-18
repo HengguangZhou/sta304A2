@@ -1,0 +1,205 @@
+---
+title: "Factors affecting feelings of life"
+author: "Brendan Kan, Hengguang Zhou, Linhao Liu"
+date: "Oct 19, 2020"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(survey)
+gss = read.csv("./gss.csv")
+
+```
+
+## Abstract
+
+GSS(General Social Survey) data is obtained from 20602 respondents, which includes all non-institutionalized persons 15 years of age and older, living in the 10 provinces of Canada. The data collects information of various categories, such as occupation, language, marital status, education and religion. We raise the question of what factors make a great importance on people’s feeling of their life. We made an analysis of respondent’s life satisfaction (feelings_life column in data), based on 5 different fields: population center (living in urban or rural), marital status, income, education and religion participation.
+
+We found that religion and income are two main factors of the evaluation of life, and on the contrary, population center and education level do not contribute a lot. Also, people who live with a partner (no matter married or just living common-law) usually have a higher evaluation on their life.
+
+## Introduction
+
+On the one hand, various research like Ada Ferrer-i-Carbonell (citation 1), Daniel Kahneman1 and Angus Deaton(citation 2), has claimed higher income more or less promotes people’s feeling of happiness. People with higher salaries are able to buy expensive products such as cars, luxuries, new technology goods and also they are capable of enjoying high-quality services. A wealthy person has the ability to satisfy all his or her needs in time. Also, if you have a higher salary than someone else, it usually means you play a more important role in modern society, and it brings superiority complex and satisfaction.
+
+On the other hand, religion can also bring a higher level of happiness (citation 3). Religious activities help the devouts build a broad social network. The more often you visit the church (religious participation), the more often you meet with priests and your friends. Social relationships are also the main reason we believe why having a spouse or partner is important. Also, spirituality gives a meaning of life, enlightenment, inner peace and inspiration.
+
+In our initial assumption, education is quite related to social status, income and range of knowledge. An educated person has a wider range of knowledge, can view things more thoroughly, and has a better understanding of what is going on. So they should be able to find problems in life more easily and solve them. However, the result seems violates this assumption.
+
+Instead of using score 1 to 10, we want to use a binary indicator to show whether a respondent has a sense of happiness or not. So, we define feelings_life >= 5 as true and otherwise false. Under this situation, logistic regression is the best model to use. 
+
+## Data
+
+The data we selected includes five different columns from the GSS 2017 data. It includes the following columns from the GSS data: the satisfaction of life for each respondent (feelings_life) as the dependent variable, and the marital status, annual income for the respondent(income_respondent), education of the respondent, and the frequency of the participation in religious activities (religious_participation) for the independent variables. The following is the first few lines of the data before the transformation:
+
+```{r}
+feeling_life = gss %>% select(feelings_life, marital_status, income_respondent, religion_participation, education)
+head(feeling_life)
+feeling_binary = feeling_life %>% mutate(feeling_binary = ifelse(feelings_life<5, 0, 1))
+for (i in c(1: 6)){  colnames(feeling_binary)[i] = paste(colnames(feeling_binary)[i], "", sep="_") }
+```
+
+We chose these data to analyze because we want to see if there is a connection between these factors and the wellness of life for the respondents, and we think that these independent variables should play an important role in how people will be satisfied with their life or not.
+
+Since we decided to analyze by using a logistic regression model, we first extracted the data we want from the GSS data, and then we transformed the feeling_life from a 1 to 10 numeric categorical variable into a binary variable, depending on if the value of feelings_life is less than 5 or not, with less than 5 being not satisfied with life and greater/equal to 5 being satisfied with life.
+
+We think there are some potential drawbacks to this data though, for example, we transformed the data for feelings_life from a 1 to 10 discrete numeric categorical variable into a binary variable based on if the value is less than 5 or not. This might affect the result by amplifying the effect the predictor variables have on the final output since even if the respondents are only borderline satisfied, they would still be considered satisfied with life after the transformation.
+
+Another one would be the fact that we only analyzed the relationship between the satisfaction for life and frequency of religion participation, but there are several more columns from the GSS 2017 data, such as religious importance and whether an individual respondent has affiliation with one or more religion(s) or not. These drawbacks might potentially affect the results we obtained from performing the logistic regression.
+
+
+
+
+## Model
+We use a generalized linear model to describe the relation between the independent variable(feeling_binary) and other factors.
+
+$$
+Y_{feeling} = \beta_0+\beta_1X_{education}+\beta_2X_{religion} + \beta_3X_{marital\_status}+\beta_4X_{income}
+$$
+
+
+Here $Y_{feeling}$ represents the binary indicator of satisfaction for life(satisfied or not). $X_{education}$ represents
+the level of education, $X_{religion}$ represents religion_participation, $X_{marital_status}$ represents
+marital_status, and $X_{income}$ represents the column income_respondent.
+
+We make the assumption that the feeling is in linear relationships with the other factors we are interested in. 
+
+
+```{r}
+fpc.srs = rep(36721242, 20602)
+gss_binary_svy = svydesign(id=~1, data=feeling_binary, fpc=fpc.srs)
+logit = svyglm(feeling_binary_ ~ education_ + religion_participation_ + marital_status_ + income_respondent_, gss_binary_svy, family="binomial") 
+```
+
+
+## Results
+
+```{r, warning=FALSE}
+#install.packages("cowplot")
+library(cowplot)
+# For marital status of respondents who are unsatisfied with life
+p1 <- feeling_binary %>%
+  filter(feeling_binary_ == 0) %>% 
+  group_by(feeling_binary_) %>% 
+  count(marital_status_) %>% 
+  mutate(percentage=(n/sum(n)) * 100) %>% 
+  ggplot(aes(x = feeling_binary_, y = percentage, fill = marital_status_, group = marital_status_)) + geom_bar(position="stack", stat="identity") + labs(y = "Percentage", x = "Satisfactory towards life", fill = "Marital Status") + ggtitle("Unsatisfied") + coord_polar("y", start=0)
+  
+```
+```{r}
+# For marital status of respondents who are satisfied with life
+p2 <- feeling_binary %>%
+  filter(feeling_binary_==1) %>% 
+  group_by(feeling_binary_) %>% 
+  count(marital_status_) %>% 
+  mutate(percentage=(n/sum(n)) * 100) %>% 
+  ggplot(aes(x = feeling_binary_, y = percentage, fill = marital_status_, group = marital_status_)) + geom_bar(position="stack", stat="identity") + labs(y = "Percentage", x = "Satisfactory towards life", fill = "Marital Status") + ggtitle("Satisfied") + coord_polar("y", start=0)
+  
+plot_grid(p1, p2)
+```
+From the resulting pie chart, we can see that the percentage of people that are married and are satisfied with their life are higher than all other marital status, while the percentage of people that are single and unsatisfied with their life are higher than others.
+
+```{r}
+# For income of the respondents who are unsatisfied with life
+p3 <- feeling_binary %>%
+  filter(feeling_binary_==0) %>% 
+  group_by(feeling_binary_) %>% 
+  count(income_respondent_) %>% 
+  mutate(percentage=(n/sum(n)) * 100) %>% 
+  ggplot(aes(x = feeling_binary_, y = percentage, fill = income_respondent_, group = income_respondent_)) + geom_bar(position="stack", stat="identity") + labs(y = "Percentage", x = "Satisfactory towards life", fill = "Income of Respondent") + ggtitle("Unsatisfied") + coord_polar("y", start=0)
+  
+```
+
+```{r}
+# For income of the respondents who are satisfied with life
+p4 <- feeling_binary %>%
+  filter(feeling_binary_==1) %>% 
+  group_by(feeling_binary_) %>% 
+  count(income_respondent_) %>% 
+  mutate(percentage=(n/sum(n)) * 100) %>% 
+  ggplot(aes(x = feeling_binary_, y = percentage, fill = income_respondent_, group = income_respondent_)) + geom_bar(position="stack", stat="identity") + labs(y = "Percentage", x = "Satisfactory towards life", fill = "Income of Respondent") + ggtitle("Satisfied") + coord_polar("y", start=0)
+  
+plot_grid(p3, p4)
+```
+We can see that for the resulting pie chart, almost half the people that are unsatisfied with their life have an income of less than 25000 annually. For the people that are satisfied with their life, we can see that the people that make less than 25000 is considerably less compared to the percentage of people that are unsatisfied with life, while the percentage of people who earns between 50000 to 74999 is considerably more.
+
+```{r}
+# For education of respondents who are unsatisfied with life
+feeling_binary %>%
+  filter(feeling_binary_==0) %>% 
+  group_by(feeling_binary_) %>% 
+  count(education_) %>% 
+  mutate(percentage=(n/sum(n)) * 100) %>% 
+  ggplot(aes(x = feeling_binary_, y = percentage, fill = education_, group = education_)) + geom_bar(position="stack", stat="identity") + labs(y = "Percentage", x = "Satisfactory towards life", fill = "Education") + ggtitle("Unsatisfied") + coord_polar("y", start=0)
+  
+```
+For the education of the people who are unsatisfied with their life, the majority of people have an education of college, high school, or less than high school diploma.
+
+```{r}
+# For education of respondents who are satisfied with life
+feeling_binary %>%
+  filter(feeling_binary_==1) %>% 
+  group_by(feeling_binary_) %>% 
+  count(education_) %>% 
+  mutate(percentage=(n/sum(n)) * 100) %>% 
+  ggplot(aes(x = feeling_binary_, y = percentage, fill = education_, group = education_)) + geom_bar(position="stack", stat="identity") + labs(y = "Percentage", x = "Satisfactory towards life", fill = "Education") + ggtitle("Satisfied") + coord_polar("y", start=0)
+```
+We can see that for the people who are satisfied with their life, the majority of them also has a college, high school, or less than high school, but one difference between this chart and the chart for the people that are unsatisfied is that the percentage people who holds an education degree of either a bachelor or higher than bachelor is considerably higher within the group of people who are satisfied with their life.
+
+```{r}
+# For religion participation of respondents who are unsatisfied with life
+p7 <- feeling_binary %>%
+  filter(feeling_binary_==0) %>% 
+  group_by(feeling_binary_) %>% 
+  count(religion_participation_) %>% 
+  mutate(percentage=(n/sum(n)) * 100) %>% 
+  ggplot(aes(x = feeling_binary_, y = percentage, fill = religion_participation_, group = religion_participation_)) + geom_bar(position="stack", stat="identity") + labs(y = "Percentage", x = "Satisfactory towards life", fill = "Religion participation") + ggtitle("Unsatisfied") + coord_polar("y", start=0)
+  
+```
+
+```{r}
+# For religion participation of respondents who are satisfied with life
+p8 <- feeling_binary %>%
+  filter(feeling_binary_==1) %>% 
+  group_by(feeling_binary_) %>% 
+  count(religion_participation_) %>% 
+  mutate(percentage=(n/sum(n)) * 100) %>% 
+  ggplot(aes(x = feeling_binary_, y = percentage, fill = religion_participation_, group = religion_participation_)) + geom_bar(position="stack", stat="identity") + labs(y = "Percentage", x = "Satisfactory towards life", fill = "Religion participation") + ggtitle("Satisfied") + coord_polar("y", start=0)
+  
+plot_grid(p7, p8)
+```
+For the religious participation bar plot, we can see that the percentage of people who do not participate in a religion practice at all is considerably higher in the group of people who are unsatisfied with their life compared to the group of people who are satisfied with their life. Also, the percentage of people who practice religion at least a few times during the year is much higher in the group of people who are satisfied with their life.
+
+```{r}
+print(broom::tidy(logit), n = 22)
+```
+As we can see in the table above, using a 97.5% confidence interval, we found that the religion_participation, marital_status, and income_respondent are closely related to satisfaction. Notably, living common-law, married has a positive impact on happiness, while not participating in religion and having an income less than 25,000 would decrease satisfaction.  On the other hand, we cannot find any significant evidence that supports the relationship between education and satisfaction.
+
+## Discussion
+
+Surprisingly, we found that education level does not have much influence on one’s satisfaction.
+
+Another thing worth noting is that only extremes of these factors have a significant impact on satisfaction. By extremes, we mean “having income less than 25000” or “No religion participation at all.” Generally speaking, we do not have significant support for the impact of having middle-range income or a moderate frequency in religion participation to satisfaction. 
+# Weaknesses
+
+One weakness of this dataset is that most of the attributes are categorical, and thus difficult to analyze.
+
+A possible weakness of our model is using satisfaction level as a binary variable over simplify the model and lose information. At the same time, we do not have a particularly good approach for choosing the threshold value while it could be influential to the result.  
+
+# Next Steps
+
+It might be interesting to analyze correlation between different factors in the future. A surprising result we got is that education is not related to satisfaction. Education is likely to have a strong relation to income(or no?), but income is related to satisfaction while education is not. Studying the correlation between them could help us understand their relation to satisfaction better.
+
+Furthermore, there are multiple attributes related to one field in the dataset. For example, income_family and income_respondent are both related to income, religion_has_affiliation, religion_importance and religion_participation are all related to religion. We can further investigate these related attributes for more findings.
+
+
+## References
+* Citation 1: Daniel Kahneman and Angus Deaton. High income improves evaluation of life but not emotional well-being. Retrieved August 4, 2010, from https://www.pnas.org/content/pnas/107/38/16489.full.pdf
+* Citation 2: Ada Ferrer-i-Carbonell. Income and well-being: an empirical analysis of the comparison income effect. Retrieved from http://darp.lse.ac.uk/papersDB/Ferrer-i-Carbonell_%28JPubE05%29.pdf
+* Citation 3: Religion’s Relationship to Happiness, Civic Engagement and Health Around the World. Retreved from https://www.pewforum.org/2019/01/31/religions-relationship-to-happiness-civic-engagement-and-health-around-the-world/
+* Statistics Canada. (2020, April). GSS 2017: User Guide for the Public Use Microdata File (PUMF). Retrieved from https://sda-artsci-utoronto-ca.myaccess.library.utoronto.ca/sdaweb/dli2/gss/gss31/gss31/more_doc/GSS31_User_Guide.pdf
+* Government of Canada, Statistics Canada. (2020, September 29). Population estimates, quarterly. Retrieved October 17, 2020, from https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000901
+* Table format code from https://piazza.com/class/kevvm6h64jo5hh?cid=255
+Cowplot package in R. Retrieved from  https://cran.r-project.org/web/packages/cowplot/index.html
