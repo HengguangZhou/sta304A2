@@ -1,6 +1,6 @@
 ---
 title: "Factors affecting feelings of life"
-author: "Brendan Kan, Hengguang Zhou, Linhao Liu"
+author: "Ping-ju Kan, Hengguang Zhou, Linhao Liu"
 date: "Oct 19, 2020"
 output: pdf_document
 ---
@@ -18,52 +18,50 @@ gss = read.csv("./gss.csv")
 
 ## Abstract
 
-We analyzed how different fields give contributions to respondent’s life satisfaction (feelings_life column in data). We applied logistic regression for five fields as input variables and tried to predict whether the respondent felt satisfied or not by checking whether feelings_life greater than or equal to 5. We found that religion and income are two main factors in evaluating life. At the same time, the education level does not contribute a lot. Also, people who live with a partner (no matter married or just living common-law) usually have a more positive feeling of their life.
+We analyzed how different fields give contributions to respondent’s life satisfaction (feelings_life column in data). We applied logistic regression for four fields as input variables and tried to predict whether the respondent felt satisfied or not by checking whether feelings_life greater than or equal to 5. We found that religion and income are two main factors in evaluating life. At the same time, the education level does not contribute a lot. Also, people who live with a partner (no matter married or just living common-law) usually have a more positive feeling of their life.
 
 ## Introduction
 
-GSS(General Social Survey) data is obtained from 20602 respondents, including all non-institutionalized persons 15 years of age and older, living in the 10 provinces of Canada.
+The feeling of life has a significant influence on your life. A positive feeling of life is related to your physical health and mental health, and it could potentially make you more energetic and more productive in work and study. In this paper, we are interested in how some common factors in life could affect the feeling level of life. With a more advanced understanding of these affecting factors, we could potentially increase our satisfaction level of life.
 
-In this paper, we focus on five attributes in this detailed dataset: population center (living in urban or rural), marital status, income, education and religion participation. We choose them based on our following assumptions.
+We focus on four attributes in GSS(General Social Survey) 2017 data set: marital status, income, education and religion participation and how they affect the value of feelings_life, since we assume that these attributes are more or less related to satisfaction of life, based on our daily observation. After our analysis, income, religion participation and marital status verified our assumption, but education does not.
 
-On the one hand, various research has claimed higher income more or less promotes people’s feeling of happiness[1, 2]. People with higher salaries are able to buy expensive products such as cars, luxuries, new technology goods, and they are capable of enjoying high-quality services. A wealthy person has the ability to satisfy all his or her needs in time. Also, suppose you have a higher salary than someone else. In that case, it usually means you play a more important role in modern society, and it brings superiority complex and satisfaction.
-
-On the other hand, religion can also bring a higher level of happiness [3]. Religious activities help the devouts build a broad social network. The more often you visit the church (religious participation), the more often you meet with priests and friends. Social relationships are also the main reason we believe why having a spouse or partner is important. Furthermore, spirituality gives meaning to life, enlightenment, inner peace and inspiration.
-
-In our initial assumption, education is closely related to social status, income and range of knowledge. An educated person has a broader range of knowledge, can view things more thoroughly, and has a better understanding of what is going on. So they should be able to find problems in life more easily and solve them. However, the result contradicts our hypothesis.
-
-Instead of using score 1 to 10, we want to use a binary indicator to show whether a respondent has a sense of happiness or not. So, we define feelings_life >= 5 as true and otherwise false. In this situation, logistic regression is the best model to use. [4] Logistic regression is suitable when the outcome of interest is binary.
-
-In the **Data** section, we filtered needed attributes while keeping all respondents in the dataset. Also, we define feeling_binary as {true: feeling_life >= 5, false: feeling_life < 5}. In the **Model** section, we explained what model we used in detail, and we presented the result in the **Result** section. **Discussion**, **Weakness** and **Next Steps** discussed what we found, what we can improve and what we can do for further investigation.
+The rest of the paper is organized as follow: In the **Data** section, we filtered needed attributes while keeping all respondents in the dataset. Also, we define feeling_binary as {true: feeling_life >= 5, false: feeling_life < 5}. In the **Model** section, we explained what model we used in detail, and we presented the result in the **Result** section. **Discussion**, **Weakness** and **Next Steps** discussed what we found, what we can improve and what we can do for further investigation.
 
 
 ## Data
 
-The data we selected includes five different columns from the GSS 2017 data [5]. It consists of the following columns from the GSS data: the satisfaction of life for each respondent (feelings_life) as the dependent variable, and the marital status, annual income for the respondent(income_respondent), education of the respondent, and the frequency of the participation in religious activities (religious_participation) for the independent variables. 
+GSS(General Social Survey) data is obtained from 20602 respondents, including all non-institutionalized persons 15 years of age and older, living in the 10 provinces of Canada.
 
-[6]
+We selected five different columns from the GSS 2017 data [5]. It consists of the following: the satisfaction of life for each respondent (feelings_life) as the dependent variable, and the marital status(marital_status), annual income for the respondent(income_respondent), education of the respondent, and the frequency of the participation in religious activities (religious_participation) for the independent variables. 
+
 Population: The population included all persons 15 years of age and older in Canada, excluding: 1. Residents of the Yukon, Northwest Territories, and Nunavut; and 2. Full-time residents of institutions. 
+
 Frame: The survey frame was created using two different components:  Lists of telephone numbers in use (both landline and cellular) available to Statistics Canada from various sources (telephone companies, Census of population, etc.);  The Address Register (AR): List of all dwellings within the ten provinces. Each record in the survey frame was assigned to a stratum within its province. 
-Sample: A simple random sample without replacement of records was next performed in each stratum.
+
+Sample: A simple random sample without replacement of records was next performed in each stratum.[6]
 
 The following is the first few lines of the data before the transformation:
 
 ```{r}
 feeling_life = gss %>% select(feelings_life, marital_status, income_respondent, religion_participation, education)
+feeling_life = na.omit(feeling_life)
 head(feeling_life)
 feeling_binary = feeling_life %>% mutate(feeling_binary = ifelse(feelings_life<5, 0, 1))
 for (i in c(1: 6)){  colnames(feeling_binary)[i] = paste(colnames(feeling_binary)[i], "", sep="_") }
 ```
 
-Since we decided to analyze using a logistic regression model, we first extracted the data we want from the GSS data. Then we transformed the feeling_life from a 1 to 10 numeric categorical variable into a binary variable, depending on whether the value of feelings_life is less than 5 or not, with less than 5 being unsatisfied with life and greater/equal to 5 being satisfied with life.
+Since we decided to analyze using a logistic regression model, we first extracted the data we want from the GSS data. Then we transformed the feeling_life from a 0 to 10 numeric categorical variable into a binary variable, depending on whether the value of feelings_life is less than 5 or not, with less than 5 being unsatisfied with life and greater/equal to 5 being satisfied with life.
 
-We think there are some potential drawbacks to this data. For example, we transformed the data for feelings_life from a 1 to 10 discrete numeric categorical variable into a binary variable based on whether the value is less than 5 or not. This might affect the result by amplifying the effect the predictor variables have on the final output since even if the respondents are only borderline satisfied, they would still be considered satisfied with life after the transformation.
+We think there are some potential drawbacks to this data. For example, we transformed the data for feelings_life from a 0 to 10 discrete numeric categorical variable into a binary variable based on whether the value is less than 5 or not. This might affect the result by amplifying the effect the predictor variables have on the final output since even if the respondents are only borderline satisfied, they would still be considered satisfied with life after the transformation.
 
 Another one would be the fact that we only analyzed the relationship between the satisfaction for life and frequency of religion participation, but there are several more columns from the GSS 2017 data, such as religious importance and whether an individual respondent has an affiliation with one or more religion(s) or not. These drawbacks might potentially affect the results we obtained from performing the logistic regression.
 
 
 ## Model
-We make the assumption that the feeling is in linear relationships with the other factors in which we are interested, thus we use a logistics model to describe the relationship between the independent variable(feeling_binary) and other factors.
+We want to understand what factor makes the most contribution to being satisfied or unsatisfied in life. In this situation, logistic regression is the best model to use. Logistic regression is suitable when the outcome of interest is binary. One alternative is to use multinomial logistic regression [4]. However, we choose to use binary logistic regression because of the binary nature of our topic.
+
+We make the assumption that the feeling is in linear relationships with the other factors in which we are interested, thus we use a linear model to describe the relationship between the independent variable(feeling_binary) and other factors.
 
 $$
 Y_{feeling} = \beta_0+\beta_1X_{education}+\beta_2X_{religion} + \beta_3X_{marital\_status}+\beta_4X_{income}
@@ -72,20 +70,22 @@ Here $Y_{feeling}$ represents the binary indicator of satisfaction for life. $X_
 the level of education, $X_{religion}$ represents religion_participation, $X_{marital\_status}$ represents
 marital_status, and $X_{income}$ represents the column income_respondent. 
 We implement this equation in R using the survey-weighted generalised linear model svyglm() function.
-One alternative is to use multinomial logistic regression. However, we choose to use binary logistic regression because of the binary nature of our topic: satisfied or unsatisfied.
 
+We obtained the population size of Canada for finite population correction[10].
 
-
-
+We computed the variance inflation factor to evaluate the linearity between explanatory variables[7]:
 ```{r}
-fpc.srs = rep(36721242, 20602)
+fpc.srs = rep(36721242, count(feeling_binary))
 gss_binary_svy = svydesign(id=~1, data=feeling_binary, fpc=fpc.srs)
 logit = svyglm(feeling_binary_ ~ education_ + religion_participation_ + marital_status_ + income_respondent_, gss_binary_svy, family="binomial") 
 VIF(logit)
 ```
 
+We can see that most of the values are low, and thus the explanatory variables are not highly linearly related.
 
 ## Results
+
+Package: [9]
 
 ```{r, warning=FALSE}
 #install.packages("cowplot")
@@ -183,6 +183,8 @@ plot_grid(p7, p8)
 ```
 For the religious participation bar plot, we can see that the percentage of people who do not participate in a religion practice at all is considerably higher in the group of people who are unsatisfied with their life compared to the group of people who are satisfied with their life. Also, the percentage of people who practice religion at least a few times during the year is much higher in the group of people who are satisfied with their lives.
 
+Code source: [8]
+
 ```{r}
 print(broom::tidy(logit), n = 22)
 ```
@@ -190,9 +192,16 @@ As we can see in the table above, using a 97.5% confidence interval, we found th
 
 ## Discussion
 
-Surprisingly, we found that education level does not have much influence on one’s satisfaction.
+Various research has claimed higher income more or less promotes people’s feelings of happiness[1, 2]. People with higher salaries are able to buy expensive products such as cars, luxuries, new technology goods, and they are capable of enjoying high-quality services. A wealthy person has the ability to satisfy all his or her needs in time. Also, suppose you have a higher salary than someone else. In that case, it usually means you play a more important role in modern society, and it brings superiority complex and satisfaction. Our results are consistent with this conjecture. We found that although the relationship between satisfaction and higher income is not clear, there is strong evidence of a negative relationship between low income and satisfaction.
 
-Another thing worth noting is that only extremes of these factors have a significant impact on satisfaction. By extremes, we mean “having income less than 25000” or “No religion participation at all.” Generally speaking, we do not have significant support for the impact of having middle-range income or a moderate frequency in religion participation to satisfaction. 
+On the other hand, our results provide strong support that satisfaction is related to religion in a similar way. Religion can also bring a higher level of happiness [3]. Religious activities help the devouts build a broad social network.  The more often you visit the church (religious participation), the more often you meet with priests and friends. 
+
+At the same time, social relationships are also one of the main reasons we believe why having a spouse or partner is important. We can see that being married or living common-law contributes significantly to more life satisfaction in our result. Afterall, spirituality gives meaning to life, enlightenment, inner peace and inspiration. 
+
+In our initial assumption, education is closely related to social status, income and range of knowledge. An educated person usually has a broader range of knowledge, can view things more thoroughly, and has a better understanding of what is going on. So they might be able to find problems in life and solve them more easily. Surprisingly, we found that education level does not have much influence on one’s satisfaction.
+
+One thing worth noting is that only extremes of these factors have a significant impact on satisfaction. By extremes, we mean “having income less than 25000” or “No religion participation at all.” Generally speaking, we do not have significant support for the impact of having middle-range income or a moderate frequency in religion participation to satisfaction. 
+
 
 ## Weaknesses
 
@@ -202,7 +211,7 @@ A possible weakness of our model is using satisfaction level as a binary variabl
 
 ## Next Steps
 
-It might be interesting to analyze the correlation between different factors in the future. A surprising result we got is that education is not related to satisfaction. From our perspective, education is likely to have a strong relation to income(or no?), but income is related to satisfaction while education is not. Studying the correlation between them could help us understand their relation to satisfaction better.
+It might be interesting to analyze the correlation between different factors in the future. A surprising result we got is that education is not related to satisfaction. From our perspective, education is likely to have a strong relation to income(or not?), but income is related to satisfaction while education is not. Studying the correlation between them could help us understand their relation to satisfaction better.
 
 Furthermore, there are multiple attributes related to one field in the dataset. For example, income_family and income_respondent are related to income, religion_has_affiliation, religion_importance and religion_participation are all related to religion. We can further investigate these related attributes for more findings.
 
@@ -217,5 +226,10 @@ Furthermore, there are multiple attributes related to one field in the dataset. 
 * 7: Government of Canada, Statistics Canada. (2020, September 29). Population estimates, quarterly. Retrieved October 17, 2020, from https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000901
 * 8: Table format code from https://piazza.com/class/kevvm6h64jo5hh?cid=255
 * 9: Cowplot package in R. Retrieved from  https://cran.r-project.org/web/packages/cowplot/index.html
+* 10: regclass package in R. Retrieved from https://www.rdocumentation.org/packages/regclass/versions/1.6/topics/VIF
+
+
+
+
 
 
